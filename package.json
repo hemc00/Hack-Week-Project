@@ -1,18 +1,8 @@
 {
-  "name": "myapp",
-  "version": "1.0.0",
-  "description": "node express test",
-  "main": "index.js",
-  "scripts": {
-    "test": "test"
-  },
-  "keywords": [
-    "test"
-  ],
-  "author": "me",
-  "license": "ISC",
+  "name": "socket-chat-example",
+  "version": "0.0.1",
+  "description": "chat socket.io app",
   "dependencies": {
-    "express": "^4.13.3",
     "socket.io": "^1.3.7"
   }
 }

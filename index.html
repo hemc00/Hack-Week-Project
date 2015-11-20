@@ -1,37 +1,297 @@
 <!doctype html>
 <html>
   <head>
-    <title>Socket.IO chat</title>
-    <style>
-      * { margin: 0; padding: 0; box-sizing: border-box; }
-      body { font: 13px Helvetica, Arial; }
-      form { background: #000; padding: 3px; position: fixed; bottom: 0; width: 100%; }
-      form input { border: 0; padding: 10px; width: 90%; margin-right: .5%; }
-      form button { width: 9%; background: rgb(130, 224, 255); border: none; padding: 10px; }
-      #messages { list-style-type: none; margin: 0; padding: 0; }
-      #messages li { padding: 5px 10px; }
-      #messages li:nth-child(odd) { background: #eee; }
-    </style>
-	<script src="https://cdn.socket.io/socket.io-1.2.0.js"></script>
+    <title>Couch CoOp</title>
+	<meta name="viewport" content="width=device-width, initial-scale=1 maximum-scale=1">
+	
+	<!-- Latest compiled and minified CSS -->
+	<link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.5/css/bootstrap.min.css" integrity="sha512-dTfge/zgoMYpP7QbHy4gWMEGsbsdZeCXz7irItjcC3sPUFtf0kuFbDz/ixG7ArTxmDjLXDmezHubeNikyKGVyQ==" crossorigin="anonymous">
+    
 	<script src="http://code.jquery.com/jquery-1.11.1.js"></script>
-	<script>
+	
+	<!-- Latest compiled and minified JavaScript -->
+	<script src="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.5/js/bootstrap.min.js" integrity="sha512-K1qjQ+NcF2TYO/eI3M6v8EiNYZfA95pQumfvcVrTHtwQVDG+aHRqLi/ETn2uB+1JqwYqVG3LIvdm9lj6imS/pQ==" crossorigin="anonymous"></script>
+	<script src="https://cdn.socket.io/socket.io-1.2.0.js"></script>
+
+	<style>
+	  html {
+		-webkit-box-sizing: border-box;
+		-moz-box-sizing: border-box;
+		box-sizing: border-box;
+	  }
+	  *, *:before, *:after {
+		-webkit-box-sizing: inherit;
+		-moz-box-sizing: inherit;
+		box-sizing: inherit;
+	  }
+	  
+	  * {
+		padding-right: 0px;
+		padding-left: 0px;
+	  }
+	  
+	  .row { margin: 0px; }
+	  
+	  #video-wrapper { 
+			margin-left: 0px;
+			min-height: 200px;
+	  }
+	  
+	  #wrapper, #chat-wrapper, #chat-message, #chat-button, #poll-img, .poll-list, .poll-list > div {
+		padding-right: 0px;
+		padding-left: 0px;
+	  }
+	  
+	  .poll-list-title {
+		padding-left: 5px;
+	  }
+	  
+	  .poll-list-vote {
+		padding-top: 5px;
+	  }
+	  
+	  #messages {
+		background-color: #EAE5E5;
+	  }
+	  
+	  @media (min-width: 768px) {
+		  #chat-wrapper {
+			position: fixed;
+			right: 0;
+		  }
+		  
+	      #title {
+			font-size: 300%;
+		  }
+	  }
+	  
+	  .navbar {
+		background-color: #2B2B40;
+		color: #C3C3C3;
+		margin-bottom: 5px;
+	  }
+	  
+	  #chat-display {
+		overflow: scroll;
+	  }
+	  
+	  #title {
+		float: left;
+		font-weight: bold;
+		font-size: 150%;
+	  }
+	  
+	  #chat-collapse {
+		float: right;
+	  }
+	  
+	  .glyphicon-expand {
+		font-size: 25px;
+		cursor: pointer;
+	  }
+	  
+	  .img-rounded {
+		width: 30%;
+	  }
+    </style>
+    <script>
 	  var socket = io();
-	  $("#test-form").submit(function(){
-	    console.dir("yo");
-		socket.emit('chat message', $('#m').val());
-		$('#m').val('');
-		return false;
+	  
+	  $(document).ready(function() {
+		adjustWindow();
+		socket.emit('poll init');
 	  });
-	</script>
+	  
+	  $( window ).resize(function() {
+		adjustWindow();
+	  });
+	  
+      
+      socket.on('chat message', function(msg) {
+		$('#messages').prepend($('<li>').text('<uname>: ' + msg)).addClass('list-group-item');
+      });
+	  
+	  socket.on('poll update', function(vote) {
+		for( i=0; i<vote.length; i++ ) {
+			$('.poll-list').eq(i).children( '.poll-list-vote' ).html('<span class="badge">'+vote[i].votes+'</span>');
+		}
+	  });
+	  
+	  socket.on('timer', function(countdown) {
+		$('#poll-header').html("Vote For The Next Video  "+countdown);
+	  });
+      
+      function sendMessage(){
+		if($('#chat-message').val() != "") {
+		  socket.emit('chat message', $('#chat-message').val());
+          $('#chat-message').val('');
+		  return false;
+		}
+      }
+	  
+	  function vote(obj){
+	    var thing = $( obj ).index();
+		var data = JSON.stringify({ index: thing });
+		socket.emit('poll update', data);
+		for(i = 0; i < 3; i++) {
+			$('.poll-list').eq(i).removeClass("active");
+		}
+		$('.poll-list').eq( thing ).addClass("active");
+	  }
+
+      function checkKeyPress(e) {
+		var key = e.keyCode;
+		//console.log("enter key");
+		if(key == 13) {
+			sendMessage();
+			return false;
+		}
+
+      }
+	  
+	  function chatToggle() {
+		var chat = $( '#chat-wrapper' );
+		var video = $( '#video-wrapper' );
+		
+		if(chat.hasClass( "hidden")) {
+			chat.removeClass( "hidden" );
+			video.removeClass( "col-sm-12" );
+			video.addClass( "col-md-9 col-sm-8" );
+			$( '#chat-collapse' ).css( {transform: 'rotate(0deg)'});
+		} else {
+			chat.addClass( "hidden" );
+			video.removeClass( "col-md-9 col-sm-8" );
+			video.addClass( "col-sm-12" );
+			$( '#chat-collapse' ).css( {transform: 'rotate(180deg)'});
+		}
+		
+		adjustWindow();
+		
+	  }
+	  
+	  function adjustWindow() {
+		var w = $( '#video' ).width();
+		var h = w * .56;
+		var max = $( window ).height() * .85;
+		//console.log(h + ' ' + $( window ).height() + ' ' + max );
+		if( h > max ) {
+			$('#video').height(max);
+		} else {
+			$('#video').height(h);
+		}
+		
+		$('#chat-wrapper').height( $( window ).height() );
+		$('#messages').height( $( window ).height() * .50 );
+		
+		if( $( window ).width() < 768 ) {
+			$( '#chat-collapse' ).addClass( "hidden" );
+			
+			if($( '#chat-wrapper' ).hasClass( "hidden")) {
+				var chat = $( '#chat-wrapper' );
+				var video = $( '#video-wrapper' );
+				
+				chat.removeClass( "hidden" );
+				video.removeClass( "col-sm-12" );
+				video.addClass( "col-sm-9" );
+			}
+		} else {
+			$( '#chat-collapse' ).removeClass( "hidden" );
+		}
+	  }
+    </script>
   </head>
+  <script src="/socket.io/socket.io.js"></script>
+
   <body>
-    <ul id="messages"></ul>
-    <form id="test-form" action="">
-      <input id="m" autocomplete="off" /><button>Send</button>
-    </form>
-	<script src="/socket.io/socket.io.js"></script>
-	<script>
-	  var socket = io();
-	</script>
+	<div id="wrapper" class="container-fluid">
+		<nav class="navbar navbar-default">
+		  <div class="container-fluid">
+			<!-- Brand and toggle get grouped for better mobile display -->
+			<div class="navbar-header">
+			  <button type="button" class="navbar-toggle collapsed" data-toggle="collapse" data-target="#bs-example-navbar-collapse-1" aria-expanded="false">
+				<span class="sr-only">Toggle navigation</span>
+				<span class="icon-bar"></span>
+				<span class="icon-bar"></span>
+				<span class="icon-bar"></span>
+			  </button>
+			  <a class="navbar-brand" href="#">Couch CoOp</a>
+			</div>
+
+			<!-- Collect the nav links, forms, and other content for toggling -->
+			<div class="collapse navbar-collapse" id="bs-example-navbar-collapse-1">
+			  <a class="navbar-brand"><small>Watch Stuff With The World</small></a>
+			  <ul class="nav navbar-nav">
+				<li class="dropdown">
+				  <a href="#" class="dropdown-toggle" data-toggle="dropdown" role="button" aria-haspopup="true" aria-expanded="false">Dropdown <span class="caret"></span></a>
+				  <ul class="dropdown-menu">
+					<li><a href="#">Action</a></li>
+					<li><a href="#">Another action</a></li>
+					<li><a href="#">Something else here</a></li>
+					<li role="separator" class="divider"></li>
+					<li><a href="#">Separated link</a></li>
+					<li role="separator" class="divider"></li>
+					<li><a href="#">One more separated link</a></li>
+				  </ul>
+				</li>
+			  </ul>
+			</div><!-- /.navbar-collapse -->
+		  </div><!-- /.container-fluid -->
+		</nav>
+		<div class="row">
+			<div id="video-wrapper" class="container col-md-9 col-xs-12 col-sm-8">
+				<div id="video-header" class="row">
+					<div id="title">Bob Ross!!</div>
+					<div id="chat-collapse" class="glyphicon glyphicon-expand" onclick="chatToggle()"></div>
+				</div>
+				<div id="video-content" class="row">
+					<iframe id="video" width="100%" src="https://www.youtube.com/embed/wdr4t7cQW2U" frameborder="0" allowfullscreen></iframe>
+				</div>
+			</div>
+			<div id="chat-wrapper" class="container col-md-3 col-sm-4 col-xs-12">
+				<div id="chat-input">
+					<div id="chat-input-wrapper" class="row">
+						<input id="chat-message" class="col-xs-10" autocomplete="off" onkeyup="checkKeyPress(event)" /><button id="chat-button" class="col-xs-2 btn-default" onclick="sendMessage()">Chat</button>
+					</div>
+				</div>
+				<div id="chat-display">
+					<div id="chat-display-output">
+						<ul id="messages" class="list-group list-unstyled"></ul>
+					</div>
+				</div>
+				<div>
+					<h3 id="poll-header">Vote For The Next Video</h3>
+					<div id="poll" class="list-group list-unstyled">
+						<a class="list-group-item poll-list row" onclick="vote(this)">
+							<img id="poll-img" class="img-rounded col-xs-3" src="https://i.ytimg.com/vi_webp/LygUyAb78oY/mqdefault.webp">
+							<div class="col-xs-7">
+								<div class="poll-list-title h5">Another Bob Ross</div>
+							</div>
+							<div class="col-xs-1 poll-list-vote">
+								<span class="badge">0</span>
+							</div>
+						</a>
+						<a class="list-group-item poll-list row" onclick="vote(this)">
+							<img id="poll-img" class="img-rounded col-xs-3" src="https://i.ytimg.com/vi_webp/O6L5YPt9CeU/mqdefault.webp">
+							<div class="col-xs-7">
+								<div class="poll-list-title h5">More Bob Ross</div>
+							</div>
+							<div class="col-xs-1 poll-list-vote">
+								<span class="badge">0</span>
+							</div>
+						</a>
+						<a class="list-group-item poll-list row" onclick="vote(this)">
+							<img id="poll-img" class="img-rounded col-xs-3" src="https://i.ytimg.com/vi_webp/m6UM-rN2D6s/mqdefault.webp">
+							<div class="col-xs-7">
+								<div class="poll-list-title h5">There is only Bob Ross</div>
+							</div>
+							<div class="col-xs-1 poll-list-vote">
+								<span class="badge">0</span>
+							</div>
+						</a>
+					</div>
+				</div>
+			</div>
+		</div>
+	</div>
   </body>
 </html>
